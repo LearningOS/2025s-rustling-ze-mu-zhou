@@ -5,8 +5,31 @@
 */
 // I AM NOT DONE
 
-fn sort<T>(array: &mut [T]){
-	//TODO
+fn sort(array: &mut [i32]) {
+    if array.is_empty() {
+        return;
+    }
+
+    // 找到数组中的最小值和最大值
+    let min = *array.iter().min().unwrap();
+    let max = *array.iter().max().unwrap();
+
+    // 创建计数数组
+    let mut count = vec![0; (max - min + 1) as usize];
+
+    // 计算每个元素的出现次数
+    for &num in array.iter() {
+        count[(num - min) as usize] += 1;
+    }
+
+    // 将排序后的结果写回原数组
+    let mut index = 0;
+    for (num, &cnt) in count.iter().enumerate() {
+        for _ in 0..cnt {
+            array[index] = num as i32 + min;
+            index += 1;
+        }
+    }
 }
 #[cfg(test)]
 mod tests {
