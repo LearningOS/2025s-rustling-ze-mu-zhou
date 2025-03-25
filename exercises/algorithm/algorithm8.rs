@@ -11,22 +11,19 @@ impl<T> Queue<T> {
     }
 
     pub fn enqueue(&mut self, value: T) {
-        self.elements.push(value)
+        self.elements.push(value);
     }
 
     pub fn dequeue(&mut self) -> Result<T, &str> {
-        if !self.elements.is_empty() {
-            Ok(self.elements.remove(0usize))
-        } else {
+        if self.is_empty() {
             Err("Queue is empty")
+        } else {
+            Ok(self.elements.remove(0))
         }
     }
 
     pub fn peek(&self) -> Result<&T, &str> {
-        match self.elements.first() {
-            Some(value) => Ok(value),
-            None => Err("Queue is empty"),
-        }
+        self.elements.first().ok_or("Queue is empty")
     }
 
     pub fn size(&self) -> usize {
@@ -39,10 +36,8 @@ impl<T> Queue<T> {
 }
 
 impl<T> Default for Queue<T> {
-    fn default() -> Queue<T> {
-        Queue {
-            elements: Vec::new(),
-        }
+    fn default() -> Self {
+        Queue::new()
     }
 }
 
@@ -54,13 +49,12 @@ pub struct MyStack<T> {
 impl<T> MyStack<T> {
     pub fn new() -> Self {
         Self {
-            q1: Queue::<T>::new(),
-            q2: Queue::<T>::new(),
+            q1: Queue::new(),
+            q2: Queue::new(),
         }
     }
 
     pub fn push(&mut self, elem: T) {
-        // Push the new element into q1
         self.q1.enqueue(elem);
     }
 
@@ -69,21 +63,22 @@ impl<T> MyStack<T> {
             return Err("Stack is empty");
         }
 
-        // Move all elements from q1 to q2 except the last one
-        while self.q1.size() > 1 {
-            if let Ok(val) = self.q1.dequeue() {
-                self.q2.enqueue(val);
+        let size = self.q1.size();
+        if size > 1 {
+            let drained: Vec<T> = self.q1.elements.drain(..size - 1).collect();
+            for elem in drained {
+                self.q2.enqueue(elem);
             }
         }
 
-        // Pop the last element from q1 (which is the top of the stack)
-        let result = self.q1.dequeue();
+        if self.q1.elements.is_empty() {
+            return Err("Stack is empty");
+        }
+        let result = self.q1.elements.remove(0);
 
-        // Swap q1 and q2 to restore the state
-        let temp = std::mem::replace(&mut self.q1, self.q2);
-        let _ = std::mem::replace(&mut self.q2, temp);
+        std::mem::swap(&mut self.q1, &mut self.q2);
 
-        result
+        Ok(result)
     }
 
     pub fn is_empty(&self) -> bool {

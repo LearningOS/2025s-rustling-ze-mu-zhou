@@ -1,154 +1,117 @@
-/*
-	heap
-	This question requires you to implement a binary heap function
-*/
-// I AM NOT DONE
+use std::collections::{HashMap, HashSet};
+use std::fmt;
 
-use std::cmp::Ord;
-use std::default::Default;
+#[derive(Debug, Clone)]
+pub struct NodeNotInGraph;
 
-pub struct Heap<T>
-where
-    T: Default,
-{
-    count: usize,
-    items: Vec<T>,
-    comparator: fn(&T, &T) -> bool,
+impl fmt::Display for NodeNotInGraph {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "访问了不在图中的节点")
+    }
 }
 
-impl<T> Heap<T>
+pub struct UndirectedGraph<N, W> {
+    adjacency_table: HashMap<N, Vec<(N, W)>>,
+}
+
+impl<N, W> Graph<N, W> for UndirectedGraph<N, W>
 where
-    T: Default,
+    N: Eq + std::hash::Hash + Clone,
+    W: Clone,
 {
-    pub fn new(comparator: fn(&T, &T) -> bool) -> Self {
-        Self {
-            count: 0,
-            items: vec![T::default()],
-            comparator,
+    fn new() -> Self {
+        UndirectedGraph {
+            adjacency_table: HashMap::new(),
         }
     }
 
-    pub fn len(&self) -> usize {
-        self.count
+    fn adjacency_table_mutable(&mut self) -> &mut HashMap<N, Vec<(N, W)>> {
+        &mut self.adjacency_table
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
-    pub fn add(&mut self, value: T) {
-        //TODO
-    }
-
-    fn parent_idx(&self, idx: usize) -> usize {
-        idx / 2
-    }
-
-    fn children_present(&self, idx: usize) -> bool {
-        self.left_child_idx(idx) <= self.count
-    }
-
-    fn left_child_idx(&self, idx: usize) -> usize {
-        idx * 2
-    }
-
-    fn right_child_idx(&self, idx: usize) -> usize {
-        self.left_child_idx(idx) + 1
-    }
-
-    fn smallest_child_idx(&self, idx: usize) -> usize {
-        //TODO
-		0
+    fn adjacency_table(&self) -> &HashMap<N, Vec<(N, W)>> {
+        &self.adjacency_table
     }
 }
 
-impl<T> Heap<T>
+pub trait Graph<N, W>
 where
-    T: Default + Ord,
+    N: Eq + std::hash::Hash + Clone,
+    W: Clone,
 {
-    /// Create a new MinHeap
-    pub fn new_min() -> Self {
-        Self::new(|a, b| a < b)
+    fn new() -> Self;
+    fn adjacency_table_mutable(&mut self) -> &mut HashMap<N, Vec<(N, W)>>;
+    fn adjacency_table(&self) -> &HashMap<N, Vec<(N, W)>>;
+
+    fn add_node(&mut self, node: N) -> bool {
+        let adjacency_table = self.adjacency_table_mutable();
+        if !adjacency_table.contains_key(&node) {
+            adjacency_table.insert(node, Vec::new());
+            true
+        } else {
+            false
+        }
     }
 
-    /// Create a new MaxHeap
-    pub fn new_max() -> Self {
-        Self::new(|a, b| a > b)
+    fn add_edge(&mut self, edge: (N, N, W)) {
+        let (node1, node2, weight) = edge;
+        self.add_node(node1.clone());
+        self.add_node(node2.clone());
+        let adjacency_table = self.adjacency_table_mutable();
+        adjacency_table
+            .entry(node1.clone()) // 使用 clone 避免移动 node1
+            .or_default()
+            .push((node2.clone(), weight.clone()));
+        adjacency_table
+            .entry(node2.clone()) // 使用 clone 避免移动 node2
+            .or_default()
+            .push((node1, weight)); // 这里 node1 未被移动，可以直接使用
     }
-}
 
-impl<T> Iterator for Heap<T>
-where
-    T: Default,
-{
-    type Item = T;
-
-    fn next(&mut self) -> Option<T> {
-        //TODO
-		None
+    fn contains(&self, node: &N) -> bool {
+        self.adjacency_table().get(node).is_some()
     }
-}
 
-pub struct MinHeap;
-
-impl MinHeap {
-    #[allow(clippy::new_ret_no_self)]
-    pub fn new<T>() -> Heap<T>
+    fn nodes<'a>(&'a self) -> HashSet<&'a N> // 添加生命周期 'a
     where
-        T: Default + Ord,
+        W: 'a, // 添加 W 的生命周期约束
     {
-        Heap::new(|a, b| a < b)
+        self.adjacency_table().keys().collect()
     }
-}
 
-pub struct MaxHeap;
-
-impl MaxHeap {
-    #[allow(clippy::new_ret_no_self)]
-    pub fn new<T>() -> Heap<T>
-    where
-        T: Default + Ord,
-    {
-        Heap::new(|a, b| a > b)
+    fn edges(&self) -> Vec<(&N, &N, &W)> {
+        let mut edges = Vec::new();
+        for (from_node, from_node_neighbours) in self.adjacency_table() {
+            for (to_node, weight) in from_node_neighbours {
+                edges.push((from_node, to_node, weight));
+            }
+        }
+        edges
     }
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn test_empty_heap() {
-        let mut heap = MaxHeap::new::<i32>();
-        assert_eq!(heap.next(), None);
-    }
+mod test_undirected_graph {
+    use super::{Graph, UndirectedGraph};
 
     #[test]
-    fn test_min_heap() {
-        let mut heap = MinHeap::new();
-        heap.add(4);
-        heap.add(2);
-        heap.add(9);
-        heap.add(11);
-        assert_eq!(heap.len(), 4);
-        assert_eq!(heap.next(), Some(2));
-        assert_eq!(heap.next(), Some(4));
-        assert_eq!(heap.next(), Some(9));
-        heap.add(1);
-        assert_eq!(heap.next(), Some(1));
-    }
+    fn test_add_edge() {
+        let mut graph = UndirectedGraph::new();
+        graph.add_edge(("a", "b", 5));
+        graph.add_edge(("b", "c", 10));
+        graph.add_edge(("c", "a", 7));
 
-    #[test]
-    fn test_max_heap() {
-        let mut heap = MaxHeap::new();
-        heap.add(4);
-        heap.add(2);
-        heap.add(9);
-        heap.add(11);
-        assert_eq!(heap.len(), 4);
-        assert_eq!(heap.next(), Some(11));
-        assert_eq!(heap.next(), Some(9));
-        assert_eq!(heap.next(), Some(4));
-        heap.add(1);
-        assert_eq!(heap.next(), Some(2));
+        let expected_edges = [
+            (&"a", &"b", &5),
+            (&"b", &"a", &5),
+            (&"c", &"a", &7),
+            (&"a", &"c", &7),
+            (&"b", &"c", &10),
+            (&"c", &"b", &10),
+        ];
+
+        for edge in expected_edges.iter() {
+            assert_eq!(graph.edges().contains(edge), true);
+        }
     }
 }
