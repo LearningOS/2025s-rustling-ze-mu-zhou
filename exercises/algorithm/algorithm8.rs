@@ -46,12 +46,12 @@ impl<T> Default for Queue<T> {
     }
 }
 
-pub struct myStack<T> {
+pub struct MyStack<T> {
     q1: Queue<T>,
     q2: Queue<T>,
 }
 
-impl<T> myStack<T> {
+impl<T> MyStack<T> {
     pub fn new() -> Self {
         Self {
             q1: Queue::<T>::new(),
@@ -80,7 +80,8 @@ impl<T> myStack<T> {
         let result = self.q1.dequeue();
 
         // Swap q1 and q2 to restore the state
-        std::mem::swap(&mut self.q1, &mut self.q2);
+        let temp = std::mem::replace(&mut self.q1, self.q2);
+        let _ = std::mem::replace(&mut self.q2, temp);
 
         result
     }
@@ -96,7 +97,7 @@ mod tests {
 
     #[test]
     fn test_queue() {
-        let mut s = myStack::<i32>::new();
+        let mut s = MyStack::<i32>::new();
         assert_eq!(s.pop(), Err("Stack is empty"));
         s.push(1);
         s.push(2);
